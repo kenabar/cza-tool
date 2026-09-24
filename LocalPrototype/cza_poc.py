@@ -8,66 +8,21 @@ from matplotlib.widgets import Slider
 
 
 def calc_y_max(q: int,k: int, b: int, i: float|int) -> float:
-    """
-    Args:
-        q: extraction rate
-        k: hydraulic conductivity
-        b: saturated thickness
-        i: regional hydraulic gradient
-
-    Returns: Maximum capture zone width from the central line of the plume
-    """
     return q / (2 * k * b * i)
 
 def calc_x_array(y_array: np.ndarray, k: int, b: int, i: float|int, q: int) -> np.ndarray:
     x = -y_array / (np.tan(((2 * np.pi * k * b * i) / q) * y_array))
     return x
 
-def get_capture_zone_boundary(x_locs: np.ndarray, y_locs: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Filter capture zone points to keep only the boundary.
-    For each unique x location, keep the smallest positive y and largest negative y (closest to y=0).
-    
-    Args:
-        x_locs: Array of x coordinates
-        y_locs: Array of y coordinates
-    
-    Returns:
-        Tuple of filtered (x_locs, y_locs) arrays representing the zone boundary
-    """
-    # Round x values to group similar values (handle floating point precision)
-    x_rounded = np.round(x_locs, decimals=1)
-    
-    # Create array of indices
-    indices = np.arange(len(x_locs))
-    
-    # Get unique x values and their first occurrence indices
-    unique_x, unique_indices = np.unique(x_rounded, return_index=True)
-    
-    filtered_x = []
-    filtered_y = []
-    
-    # For each unique x value, find and keep boundary points
-    for x_val in unique_x:
-        mask = x_rounded == x_val
-        y_at_x = y_locs[mask]
-        
-        # Find smallest positive y (upper boundary, closest to zero)
-        positive_y = y_at_x[y_at_x > 0]
-        if len(positive_y) > 0:
-            min_positive = np.min(positive_y)
-            filtered_x.append(x_val)
-            filtered_y.append(min_positive)
-        
-        # Find largest negative y (lower boundary, closest to zero)
-        negative_y = y_at_x[y_at_x < 0]
-        if len(negative_y) > 0:
-            max_negative = np.max(negative_y)
-            filtered_x.append(x_val)
-            filtered_y.append(max_negative)
-    
-    return np.array(filtered_x), np.array(filtered_y)
+def calc_asymptote_y_val(q: int, k: int, b: int, i: float|int) -> float:
+    return q / (2 * k * b * i)
 
+def filter_asymptotes(x_array: np.ndarray, y_array: np.ndarray, asymptote_y):
+    # Filter out points from the arrays where y is greater than y_max
+    mask = np.abs(y_array) < asymptote_y
+    x_filtered = x_array[mask]
+    y_filtered = y_array[mask]
+    return x_filtered, y_filtered
 
 def main():
     # Define the parameters
@@ -91,12 +46,15 @@ def main():
 
     # Calculate initial plot
     x_locs = calc_x_array(y_locs, k_init, b_init, i_init, q_init)
+    asymptote_y_val = calc_asymptote_y_val(q_init, k_init, b_init, i_init)
+    x_filt, y_filt = filter_asymptotes(x_locs, y_locs, asymptote_y_val)
     y_max = calc_y_max(q_init, k_init, b_init, i_init)
-    line, = ax_plot.plot(x_locs, y_locs)
+    line, = ax_plot.plot(x_filt, y_filt)
+    ax_plot.plot(0, 0, 'ro', markersize=8)
     ax_plot.set_xlim(-400, 1000)
     ax_plot.set_ylim(-y_max, y_max)
-    ax_plot.set_xlabel("Distance (x)")
-    ax_plot.set_ylabel("Distance (y)")
+    ax_plot.set_xlabel("X")
+    ax_plot.set_ylabel("Y")
     ax_plot.set_title("Control Zone Analysis")
     ax_plot.grid(True, alpha=0.3)
 
@@ -113,8 +71,10 @@ def main():
         b = int(slider_b.val)
         
         x_locs = calc_x_array(y_locs, k, b, i, q)
+        asymptote_y_val = calc_asymptote_y_val(q, k, b, i)
+        x_filt, y_filt = filter_asymptotes(x_locs, y_locs, asymptote_y_val)
 
-        line.set_data(x_locs, y_locs)
+        line.set_data(x_filt, y_filt)
         fig.canvas.draw_idle()
 
     slider_q.on_changed(update)
