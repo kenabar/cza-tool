@@ -17,7 +17,7 @@ def calc_x_array(y_array: np.ndarray, k: int, b: int, i: float|int, q: int) -> n
 def calc_asymptote_y_val(q: int, k: int, b: int, i: float|int) -> float:
     return q / (2 * k * b * i)
 
-def filter_asymptotes(x_array: np.ndarray, y_array: np.ndarray, asymptote_y):
+def filter_asymptotes(x_array: np.ndarray, y_array: np.ndarray, asymptote_y: float) -> tuple[np.ndarray, np.ndarray]:
     # Filter out points from the arrays where y is greater than y_max
     mask = np.abs(y_array) < asymptote_y
     x_filtered = x_array[mask]
@@ -32,7 +32,7 @@ def main():
     b_init = 20  # saturated thickness
 
     # Define the y array
-    y_locs: np.ndarray = np.arange(-1000, 1000.1, step=20, dtype=int)
+    y_locs: np.ndarray = np.arange(-1000, 1000.1, step=5, dtype=int)
 
     # Create figure with space for sliders
     fig = plt.figure(figsize=(12, 8))
